@@ -1,0 +1,7 @@
+# ignore packages installed by npm
+node_modules
+
+# put any other filed you don't want to check in here,
+# such as .Ds_Store(OSX), *.bak, etc.
+.Ds_Store
+.vscode
