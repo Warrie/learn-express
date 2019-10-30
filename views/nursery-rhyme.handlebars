@@ -1,0 +1,46 @@
+{{#section 'head'}}
+<script src="//cdnjs.cloudflare.com/ajax/libs/handlebars.js/1.3.0/handlebars.min.js"></script>
+{{!-- 放在隐藏元素中的模板 --}}
+<script id="nurseryTemp" type="text/x-handlebars-template">
+marry had a little <b>\{{animal}}</b>
+</script>
+{{/section}}
+
+<div id="nurseryRhyme">click</div>
+<hr>
+<button id="btn">gggg</button>
+<button id="btnAjax">gggAjax</button>
+
+{{#section 'jquery'}}
+<script>
+$('document').ready(function(){
+  // 取出隐藏元素中的模板内容，编译，行程一个动态渲染上下文的方法
+  var nurseryTemp=Handlebars.compile($('#nurseryTemp').html())
+
+
+  var $nurseryRhyme=$('#nurseryRhyme');
+ 
+
+   $nurseryRhyme.innerHTML='qqqqq'
+   var a=document.getElementById('nurseryRhyme');
+    console.log($nurseryRhyme,a)
+   a.innerHTML='<b>aa</b>'
+
+  $('#btn').on('click',function(e){
+    e.preventDefault();
+    $('#nurseryRhyme').html(nurseryTemp({
+      animal:'aaaa',
+    }));
+  })
+
+  $('#btnAjax').on('click',function(e){
+    e.preventDefault();
+    $.ajax('/data/nursery-rhyme',{
+      success:function(data){
+        $('#nurseryRhyme').html(nurseryTemp(data));
+      }
+    })
+  })
+})
+</script>
+{{/section}}

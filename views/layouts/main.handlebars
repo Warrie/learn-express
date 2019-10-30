@@ -6,6 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>meadowlarrk travel</title>
+  {{{_sections.head}}}
+  {{#if flash}}
+  <div>
+    
+  </div>
+  {{/if}}
   {{#if showTests}}
   <link rel="stylesheet" href="/vendor/mocha.css">
   {{/if}}
@@ -15,20 +21,22 @@
 <body>
   <header><img src="/img/logo.gif" alt="logo" /></header>
   {{{body}}}
+  <script src="http://code.jquery.com/jquery-2.0.2.min.js"></script>
+  {{{_sections.jquery}}}
 
   {{#if showTests}}
-    <div id="mocha"></div>
-    <script src="/vendor/mocha.js"></script>
-    <script src="/vendor/chai.js"></script>
-    <script>
-      mocha.ui('tdd');
-      var assert=chai.assert;
-    </script>
-    <script src="/qa/tests-global.js"></script>
-    {{#if pageTestScript}}
-      <script src="{{pageTestScript}}"></script>
-    {{/if}}
-    <script>mocha.run();</script>
+  <div id="mocha"></div>
+  <script src="/vendor/mocha.js"></script>
+  <script src="/vendor/chai.js"></script>
+  <script>
+    mocha.ui('tdd');
+    var assert = chai.assert;
+  </script>
+  <script src="/qa/tests-global.js"></script>
+  {{#if pageTestScript}}
+  <script src="{{pageTestScript}}"></script>
+  {{/if}}
+  <script>mocha.run();</script>
   {{/if}}
 </body>
 

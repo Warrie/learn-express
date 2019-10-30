@@ -1,0 +1,11 @@
+<form action="/contest/vacation-photo/{year}/{month}" method="post" enctype="multipart/form-data">
+  <label for="fieldName">Name</label>
+  <input type="text" id="fildName" name="name">
+  <br>
+  <label for="fieldEmail">email</label>
+  <input type="email" required id="fieldEmail" name="email">
+  <label for="fieldPhoto">fieldPhoto</label>
+  <input type="file" required accept='image/*' id="fieldPhoto" name="photo">
+  <br>
+  <button type="submit">submit</button>
+</form>

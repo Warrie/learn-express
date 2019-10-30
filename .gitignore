@@ -5,3 +5,6 @@ node_modules
 # such as .Ds_Store(OSX), *.bak, etc.
 .Ds_Store
 .vscode
+
+# cookieCredentials
+credentials.js
