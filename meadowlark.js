@@ -1,8 +1,28 @@
 var express = require("express");
-var fortune = require("./lib/fortune");
 var formidable = require("formidable");
 var jqupload = require("jquery-file-upload-middleware");
+// var nodemailer = require("nodemailer");
+var http = require("http");
+
 var credentials = require("./credentials");
+var fortune = require("./lib/fortune");
+
+// var mailTransport = nodemailer.createTransport('SMTP',{
+//   service:'163',
+//   auth:{
+//     user:credentials.n163.user,
+//     pass:credentials.n163.pass,
+//   }
+// })
+
+// mailTransport.sendMail({
+//   from:'sss',
+//   to:'805699836@qq.com',
+//   subject:'aa',
+//   text:'sssss',
+// },function(err){
+//   if(err) console.log('err!')
+// })
 
 var app = express();
 
@@ -22,6 +42,49 @@ app.set("view engine", "handlebars");
 
 app.set("port", process.env.PORT || 3000);
 
+// 每个请求创建一个域，独立域处理请求，追踪请求中所有未捕获错误并且做出响应
+app.use(function(req, res, next) {
+  // 为这个请求创建域
+  var domain = require("domain").create();
+  // 处理这个域中的错误
+  domain.on("error", function(err) {
+    console.error("Domain error caught\n", err.stack);
+    try {
+      // 5秒内故障保护关机
+      setTimeout(function() {
+        console.error("Failsafe shutdown");
+        process.exit(1);
+      }, 5000);
+
+      // 从集群断开
+      var worker = require("cluster").worker;
+      if (worker) worker.disconnect();
+
+      // 停止接收新请求
+      server.close();
+
+      try {
+        // 尝试使用express错误路由
+        next(err);
+      } catch (err) {
+        // 如果expres错误路由失效，尝试返普通文本响应
+        console.error("express error machine failed. \n", err.stack);
+        res.statusCode = 500;
+        res.setHeader("content-type", "text/plain");
+        res.end("server error.");
+      }
+    } catch (err) {
+      console.error("unable to send 500 response.\n", err.stack);
+    }
+  });
+  // 向域中添加请求和响应
+  domain.add(req);
+  domain.add(res);
+
+  // 执行该域中剩余的请求链
+  domain.run(next);
+});
+
 // 静态文件中间件
 // 使用static将文件变为静态文件目录，直接访问可将文件读取、传输到客户端
 app.use(express.static(__dirname + "/public"));
@@ -40,7 +103,7 @@ app.use(function(req, res, next) {
 app.use(require("cookie-parser")(credentials.cookieSecret));
 
 // 服务器会话内存存储
-app.use(require('express-session')());
+// app.use(require("express-session")());
 
 // 将数据传入上下文
 app.use(function(req, res, next) {
@@ -48,6 +111,15 @@ app.use(function(req, res, next) {
   res.locals.partials.weather = {
     locations: [{ name: "1", weather: "a" }, { name: "2", weather: "b" }]
   };
+  next();
+});
+
+// 不同工作线程处理不同请求
+app.use(function(req, res, next) {
+  var cluster = require("cluster");
+  if (cluster.isWorker) {
+    console.log("Worker %d received request", cluster.worker.id);
+  }
   next();
 });
 
@@ -66,13 +138,13 @@ app.use("/upload", function(req, res, next) {
 app.get("/", function(req, res) {
   // res.type('text/plain');
   // res.send('hello');
-  res.cookie('monster', 'momo');
-  res.cookie('husband', 'mumu', {signed:true})
+  res.cookie("monster", "momo");
+  res.cookie("husband", "mumu", { signed: true });
   res.render("home");
 });
 
 app.get("/about", function(req, res) {
-  req.session.husband='mumu';
+  req.session.husband = "mumu";
   res.render("about", {
     fortune: fortune.getFortune(),
     pageTestScript: "/qa/tests-about.js"
@@ -80,8 +152,6 @@ app.get("/about", function(req, res) {
 });
 
 app.get("/jquerytest", function(req, res) {
-  console.log(`------req.session.husband------`);
-  console.log(req.session.husband);
   res.render("jquerytest");
 });
 
@@ -130,6 +200,16 @@ app.get("/thank-you", function(req, res) {
   res.render("thank-you");
 });
 
+app.get("/fail", function(req, res) {
+  throw new Error("Nope!");
+});
+
+app.get("/epic-fail", function(req, res) {
+  process.nextTick(function() {
+    throw new Error("kaboom!");
+  });
+});
+
 app.use(function(err, res) {
   // res.type('text/plain');
   res.status(404);
@@ -145,6 +225,42 @@ app.use(function(err, req, res, next) {
   res.render("500");
 });
 
-app.listen(app.get("port"), function() {
-  console.log("start on" + app.get("port"));
-});
+// 日志
+switch (app.get("env")) {
+  case "development":
+    // 彩色日志
+    app.use(require("morgan")("dev"));
+    break;
+  case "production":
+    app.use(
+      require("express-logger")({
+        path: __dirname + "/log/requests.log"
+      })
+    );
+    break;
+}
+
+// app.listen(app.get("port"), function() {
+//   console.log("start on" + app.get("port"));
+//   console.log("env:" + app.get("env"));
+// });
+
+// http.createServer(app).listen(app.get("port"), function() {
+//   console.log("start on" + app.get("port"));
+//   console.log("env:" + app.get("env"));
+// });
+
+function startServer() {
+  http.createServer(app).listen(app.get("port"), function() {
+    console.log("start on" + app.get("port"));
+    console.log("env:" + app.get("env"));
+  });
+}
+
+if (require.main === module) {
+  // 应用程序直接运行，启动服务器
+  startServer();
+} else {
+  // 应用程序作为模块引入到别的地方创建服务
+  module.exports = startServer;
+}

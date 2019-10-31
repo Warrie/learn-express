@@ -22,8 +22,8 @@ module.exports = function(grunt) {
 
   // 注册任务
   grunt.registerTask("default", [
-    // "cafemocha",
-     "jshint", 
-     "exec"
+    "cafemocha",
+    //  "jshint", 
+    //  "exec"
     ]);
 };
