@@ -1,0 +1,15 @@
+<h1>Vacations</h1>
+{{#each vacations}}
+<div class="vacation">
+  <h3>{{name}}</h3>
+  <p>{{description}}</p>
+  {{#if inSeason}}
+  <span>{{price}}</span>
+  <a href="/cart/add?sku={{sku}}">buy now</a>
+  {{else}}
+  <span>sorry</span>
+  {{! the }}
+  <a href="/notify-me-when-in-season?sku={{sku}}">Notify me</a>
+  {{/if}}
+</div>
+{{/each}}

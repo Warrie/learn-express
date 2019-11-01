@@ -9,17 +9,19 @@
   {{{_sections.head}}}
   {{#if flash}}
   <div>
-    
+
   </div>
   {{/if}}
   {{#if showTests}}
   <link rel="stylesheet" href="/vendor/mocha.css">
   {{/if}}
   <script src="//code.jquery.com/jquery-2.0.2.min.js"></script>
+  <script src="{{static 'js/meadowlark.min.28bcf4f4.js'}}"></script>
+  <link rel="stylesheet" href="{{static '/css/meadowlark.min.508920e2.css'}}">
 </head>
 
 <body>
-  <header><img src="/img/logo.gif" alt="logo" /></header>
+  <header><img src="{{static '/img/logo.gif'}}" alt="logo" /></header>
   {{{body}}}
   <script src="http://code.jquery.com/jquery-2.0.2.min.js"></script>
   {{{_sections.jquery}}}

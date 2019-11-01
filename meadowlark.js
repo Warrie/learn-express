@@ -1,3 +1,4 @@
+var https = require("https");
 var express = require("express");
 var formidable = require("formidable");
 var jqupload = require("jquery-file-upload-middleware");
@@ -6,7 +7,8 @@ var http = require("http");
 
 var credentials = require("./credentials");
 var fortune = require("./lib/fortune");
-
+var Vacation = require("./models/vacation.js");
+var rest = require("connect-rest");
 // var mailTransport = nodemailer.createTransport('SMTP',{
 //   service:'163',
 //   auth:{
@@ -34,6 +36,9 @@ var handlebars = require("express3-handlebars").create({
       if (!this._sections) this._sections = {};
       this._sections[name] = options.fn(this);
       return null;
+    },
+    static: function(name) {
+      return require("./lib/static.js").map(name);
     }
   }
 });
@@ -41,6 +46,8 @@ app.engine("handlebars", handlebars.engine);
 app.set("view engine", "handlebars");
 
 app.set("port", process.env.PORT || 3000);
+
+app.use("/api", require("cors")());
 
 // 每个请求创建一个域，独立域处理请求，追踪请求中所有未捕获错误并且做出响应
 app.use(function(req, res, next) {
@@ -103,7 +110,7 @@ app.use(function(req, res, next) {
 app.use(require("cookie-parser")(credentials.cookieSecret));
 
 // 服务器会话内存存储
-// app.use(require("express-session")());
+app.use(require("express-session")());
 
 // 将数据传入上下文
 app.use(function(req, res, next) {
@@ -123,6 +130,9 @@ app.use(function(req, res, next) {
   next();
 });
 
+// 拆分路由
+require("./routes.js")(app);
+
 app.use("/upload", function(req, res, next) {
   var now = Date.now();
   jqupload.fileHandler({
@@ -133,22 +143,6 @@ app.use("/upload", function(req, res, next) {
       return "/uploads/" + now;
     }
   })(req, res, next);
-});
-
-app.get("/", function(req, res) {
-  // res.type('text/plain');
-  // res.send('hello');
-  res.cookie("monster", "momo");
-  res.cookie("husband", "mumu", { signed: true });
-  res.render("home");
-});
-
-app.get("/about", function(req, res) {
-  req.session.husband = "mumu";
-  res.render("about", {
-    fortune: fortune.getFortune(),
-    pageTestScript: "/qa/tests-about.js"
-  });
 });
 
 app.get("/jquerytest", function(req, res) {
@@ -192,6 +186,23 @@ app.post("/contest/vacation-photo/:year/:month", function(req, res) {
   });
 });
 
+app.get("/vacations", function(req, res) {
+  Vacation.find({ available: true }, function(err, vacations) {
+    var context = {
+      vacations: vacations.map(function(vacation) {
+        return {
+          sku: vacation.sku,
+          name: vacation.name,
+          description: vacation.description,
+          price: vacation.getDisplayPrice(),
+          inSeason: vacation.inSeason
+        };
+      })
+    };
+    res.render("vacations", context);
+  });
+});
+
 app.get("/error", function(req, res) {
   res.render("error");
 });
@@ -208,6 +219,23 @@ app.get("/epic-fail", function(req, res) {
   process.nextTick(function() {
     throw new Error("kaboom!");
   });
+});
+
+// 根据文件路由自动访问
+var autoViews = {};
+var fs = require("fs");
+
+app.use(function(req, res, next) {
+  var path = req.path.toLowerCase();
+  // 检查缓存
+  if (autoViews[path]) return res.render(autoViews[path]);
+  // 不在缓存。匹配文件
+  if (fs.existsSync(__dirname + "/views" + path + ".handlebars")) {
+    autoViews[path] = path.replace(/^\//, ""); // 转成文件名
+    return render(autoViews[path]);
+  }
+  // 没发现 转404
+  next();
 });
 
 app.use(function(err, res) {
@@ -251,7 +279,16 @@ switch (app.get("env")) {
 // });
 
 function startServer() {
-  http.createServer(app).listen(app.get("port"), function() {
+  // http.createServer(app).listen(app.get("port"), function() {
+  //   console.log("start on" + app.get("port"));
+  //   console.log("env:" + app.get("env"));
+  // });
+
+  var options = {
+    key: fs.readFileSync(__dirname + "/ssl/meadowlark.pem"),
+    cert: fs.readFileSync(__dirname + "/ssl/meadowlark.crt")
+  };
+  https.createServer(options, app).listen(app.get("port"), function() {
     console.log("start on" + app.get("port"));
     console.log("env:" + app.get("env"));
   });
@@ -264,3 +301,75 @@ if (require.main === module) {
   // 应用程序作为模块引入到别的地方创建服务
   module.exports = startServer;
 }
+
+// mongodb
+// var mongoose = require("mongoose");
+// var opts = {
+//   server: {
+//     // socketOptions: { keepAlive: 1 },
+//     useNewUrlParser: true
+//   }
+// };
+
+// switch (app.get("env")) {
+//   case "development":
+//     mongoose.connect(credentials.mongo.development.connectionString, opts);
+//     break;
+//   case "production":
+//     mongoose.connect(credentials.mongo.development.connectionString, opts);
+//     break;
+//   default:
+//     throw new Error("unkown execution environment:" + app.get("env"));
+// }
+
+// 添加初始数据
+// Vacation.find(function(err, vacations) {
+//   console.log(`------vacations------`);
+//   console.log(vacations);
+//   if (vacations.length) return;
+
+//   new Vacation({
+//     name: "t1",
+//     name: "t1",
+//     slug: "t1",
+//     category: "t1",
+//     sku: "t1",
+//     description: "t1",
+//     priceIncents: 1,
+//     tags: ["t1"],
+//     inSeason: true,
+//     maximumGuests: 1,
+//     notes: "t1",
+//     packageSold: 1
+//   }).save();
+
+//   new Vacation({
+//     name: "t2",
+//     name: "t2",
+//     slug: "t2",
+//     category: "t2",
+//     sku: "t2",
+//     description: "t2",
+//     priceIncents: 2,
+//     tags: ["t2"],
+//     inSeason: true,
+//     maximumGuests: 2,
+//     notes: "t2",
+//     packageSold: 2
+//   }).save();
+
+//   new Vacation({
+//     name: "t3",
+//     name: "t3",
+//     slug: "t3",
+//     category: "t3",
+//     sku: "t3",
+//     description: "t3",
+//     priceIncents: 3,
+//     tags: ["t3"],
+//     inSeason: false,
+//     maximumGuests: 3,
+//     notes: "t3",
+//     packageSold: 3
+//   }).save();
+// });
